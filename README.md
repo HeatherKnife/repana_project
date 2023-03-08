@@ -20,7 +20,7 @@ The idea is to make a program that finds the rise time of the signals and then c
     G    |                        *       |                    |
     E    |                       *        |                    |
          |                      *         |                    |
-   [V]   |                     *          |                    |
+   |V|   |                     *          |                    |
          |*********************           |                    |
          |                     |----------|                    |
          |                      RAISE TIME                     |
