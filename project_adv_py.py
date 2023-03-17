@@ -65,7 +65,7 @@ for file_name in glob.glob(file_pattern):
         # if counter == 3:
         #     print("bool_arr: ", bool_arr[2:25])
         consecutive_true = np.convolve(bool_arr, np.ones(6), mode='valid') == 6
-        start_smp = (np.argmax(consecutive_true) + 6) if any(consecutive_true) else 500
+        start_smp = (np.argmax(consecutive_true) + 6) if any(consecutive_true) else 0
         # print("start_smp: ", start_smp)
         # if start_smp == None:
         #     print("y", y)
@@ -95,58 +95,54 @@ for file_name in glob.glob(file_pattern):
             # print(y[i,490:520])
         smp_start[i] = return_beg(y[i,490:520])
         smp_stop[i] = return_end(x[1800:2000], y[i,1800:2000], x[500:600], y[i,500:600])
-        if smp_stop[i] - smp_start[i] < 0:
-            continue
-        rise_time[i] = smp_stop[i] - smp_start[i]
+        if smp_stop[i] - smp_start[i] > 0:
+            rise_time[i] = smp_stop[i] - smp_start[i]
 
             # print(y[i,490:520])
 
-    negative_indices = np.where(rise_time < 0)[0]
-    print("negative_indices ", negative_indices)
+    # negative_indices = np.where(rise_time < 100)[0]
+    # print("negative_indices ", negative_indices)
 
-    print("smp_start: ", smp_start[5])
-    print("smp_stop: ", smp_stop[5])
+    # print("smp_start: ", smp_start[5])
+    # print("smp_stop: ", smp_stop[5])
     print(rise_time[0:10])
 
-    sorted_rise_time = np.sort(rise_time)
-
-    bin_start = sorted_rise_time[0]
-    bin_stop = sorted_rise_time[len(sorted_rise_time)-1]
-
     num_bins = int(np.max(rise_time) - np.min(rise_time))
+
+    # print("num_bins ", num_bins)
+    # print("min ", np.min(rise_time)-0.5)
+    # print("max  ", np.max(rise_time)+0.5)
+
     bin_edges = np.arange(np.min(rise_time)-0.5, np.max(rise_time)+0.5)
     bin_center = (0.5*(bin_edges[1:]+bin_edges[:-1]))
     # bin_center = bin_edges[0:-1] + np.diff(bin_edges)[0]/2 
     hist, _ = np.histogram(rise_time, bins=bin_edges)
 
-    print("*******************************************************************************************************")
-    print("hist ", hist)
-    print("bin_edges ", bin_edges)
-    print("num_bins ", num_bins)
-    print("min ", np.min(rise_time)-0.5)
-    print("max  ", np.max(rise_time)+0.5)
-    print("rise_time  ", rise_time)
-    print("sorted_rise_time[0]  ", sorted_rise_time)
-    print("sorted_rise_time[len(sorted_rise_time)-1]  ", sorted_rise_time[len(sorted_rise_time)-1])
+    # print("*******************************************************************************************************")
+    # print("hist ", hist)
+    # print("bin_edges ", bin_edges)
+    # print("rise_time  ", rise_time)
+    # print("sorted_rise_time[0]  ", sorted_rise_time)
+    # print("sorted_rise_time[len(sorted_rise_time)-1]  ", sorted_rise_time[len(sorted_rise_time)-1])
 
-    # amplitude_guess = np.max(hist)
-    # mean_guess = np.mean(rise_time)
-    # sigma_guess = np.std(rise_time)
+    amplitude_guess = np.max(hist)
+    mean_guess = np.mean(rise_time)
+    sigma_guess = np.std(rise_time)
 
-    # # Define the Gaussian function
-    # def gaussian(x, amplitude, mean, stddev):
-    #     return amplitude * np.exp(-(x - mean) ** 2 / (2 * stddev ** 2))
+    # Define the Gaussian function
+    def gaussian(x, amplitude, mean, stddev):
+        return amplitude * np.exp(-(x - mean) ** 2 / (2 * stddev ** 2))
 
-    # x_gauss = np.arange(np.min(rise_time), np.max(rise_time), 0.1)
-    # y_gauss = gaussian(x_gauss, amplitude_guess, mean_guess, sigma_guess)
+    x_gauss = np.arange(np.min(rise_time), np.max(rise_time), 0.1)
+    y_gauss = gaussian(x_gauss, amplitude_guess, mean_guess, sigma_guess)
 
-    # coeff, cov = curve_fit(gaussian, bin_center, hist, p0=(amplitude_guess, mean_guess, sigma_guess))
+    coeff, cov = curve_fit(gaussian, bin_center, hist, p0=(amplitude_guess, mean_guess, sigma_guess))
 
-    # print("coeff: ", coeff)
-    # print("cov: ", cov)
+    print("coeff: ", coeff)
+    print("cov: ", cov)
 
-    # plt.hist(rise_time, bins = bin_edges)
-    # plt.plot(bin_center, hist, "r.")
-    # plt.plot(x_gauss, y_gauss, 'r--', label='Gaussian function')
-    # plt.show()
+    plt.hist(rise_time, bins = bin_edges)
+    plt.plot(bin_center, hist, "r.")
+    plt.plot(x_gauss, y_gauss, 'r--', label='Gaussian function')
+    plt.show()
 
