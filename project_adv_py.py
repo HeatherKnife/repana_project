@@ -10,6 +10,11 @@ file_pattern = '/media/integra/acd1b1cd-2cf9-4837-9619-4230c7a64b1d/Documents/20
 
 # Initialize an empty list to hold the data
 data = []
+mean_rise_time_per_e = np.empty(shape=(0,), dtype=float)
+mean_rise_time_per_e_unc = np.empty(shape=(0,), dtype=float)
+energy = np.empty(shape=(0,), dtype=float)
+energy_unc = np.empty(shape=(0,), dtype=float)
+
 counter = 0 
 # Loop over all files that match the pattern and read the data
 for file_name in glob.glob(file_pattern):
@@ -22,16 +27,18 @@ for file_name in glob.glob(file_pattern):
     size = str(int(len(buffer) / 8)) + 'd'
     print("size: ", size)
 
-    counter = counter + 1
-
-    print(counter)
-
     # Unpack the data
     data = struct.unpack(size, buffer)
 
     # Find the number of signals in this file
     number_of_signals = int((len(buffer) - 9 * 8) / (8 * 2000))
     print(number_of_signals)
+
+    print("data[4] ", data[4])
+    print("data[5] ", data[5])
+
+    energy = np.append(energy, data[4])
+    energy_unc = np.append(energy_unc, data[5])
 
     data = np.array(data[9:])
     num_elements = number_of_signals * 2000
@@ -62,15 +69,8 @@ for file_name in glob.glob(file_pattern):
     def return_beg(y):
         dxdy = np.gradient(y)
         bool_arr = np.array([dxdy[i] > 2 for i in range(len(dxdy)-1)], dtype = bool)
-        # if counter == 3:
-        #     print("bool_arr: ", bool_arr[2:25])
         consecutive_true = np.convolve(bool_arr, np.ones(6), mode='valid') == 6
         start_smp = (np.argmax(consecutive_true) + 6) if any(consecutive_true) else 0
-        # print("start_smp: ", start_smp)
-        # if start_smp == None:
-        #     print("y", y)
-        #     print("bool_arr: ", bool_arr)
-        #     print("dxdy: ", dxdy)
         return (490 + start_smp)-7
 
     def return_end(x,y,smp2extrpl_x,smp2extrpl_y):
@@ -85,45 +85,21 @@ for file_name in glob.glob(file_pattern):
 
     # Plot the first signal
     print("Max value of first signal:", np.max(y))
-    if counter == 3:
-        plt.plot(x, y[3179], color="red")
-        plt.show()
+    # if counter == 3:
+    #     plt.plot(x, y[3179], color="red")
+    #     plt.show()
 
     for i in range(number_of_signals):
-        # if counter == 7:
-        #     print(i)
-            # print(y[i,490:520])
         smp_start[i] = return_beg(y[i,490:520])
         smp_stop[i] = return_end(x[1800:2000], y[i,1800:2000], x[500:600], y[i,500:600])
-        if smp_stop[i] - smp_start[i] > 0:
-            rise_time[i] = smp_stop[i] - smp_start[i]
+        rise_time[i] = smp_stop[i] - smp_start[i]
 
-            # print(y[i,490:520])
-
-    # negative_indices = np.where(rise_time < 100)[0]
-    # print("negative_indices ", negative_indices)
-
-    # print("smp_start: ", smp_start[5])
-    # print("smp_stop: ", smp_stop[5])
     print(rise_time[0:10])
 
     num_bins = int(np.max(rise_time) - np.min(rise_time))
-
-    # print("num_bins ", num_bins)
-    # print("min ", np.min(rise_time)-0.5)
-    # print("max  ", np.max(rise_time)+0.5)
-
     bin_edges = np.arange(np.min(rise_time)-0.5, np.max(rise_time)+0.5)
     bin_center = (0.5*(bin_edges[1:]+bin_edges[:-1]))
-    # bin_center = bin_edges[0:-1] + np.diff(bin_edges)[0]/2 
     hist, _ = np.histogram(rise_time, bins=bin_edges)
-
-    # print("*******************************************************************************************************")
-    # print("hist ", hist)
-    # print("bin_edges ", bin_edges)
-    # print("rise_time  ", rise_time)
-    # print("sorted_rise_time[0]  ", sorted_rise_time)
-    # print("sorted_rise_time[len(sorted_rise_time)-1]  ", sorted_rise_time[len(sorted_rise_time)-1])
 
     amplitude_guess = np.max(hist)
     mean_guess = np.mean(rise_time)
@@ -138,11 +114,32 @@ for file_name in glob.glob(file_pattern):
 
     coeff, cov = curve_fit(gaussian, bin_center, hist, p0=(amplitude_guess, mean_guess, sigma_guess))
 
+    mean_rise_time_per_e = np.append(mean_rise_time_per_e, coeff[1])
+    mean_rise_time_per_e_unc = np.append(mean_rise_time_per_e_unc, np.sqrt(cov[1,1 ]))
+
     print("coeff: ", coeff)
     print("cov: ", cov)
 
-    plt.hist(rise_time, bins = bin_edges)
-    plt.plot(bin_center, hist, "r.")
-    plt.plot(x_gauss, y_gauss, 'r--', label='Gaussian function')
-    plt.show()
+    # plt.hist(rise_time, bins = bin_edges)
+    # plt.plot(bin_center, hist, "r.")
+    # plt.plot(x_gauss, y_gauss, 'r--', label='Gaussian function')
+    # plt.show()
 
+    counter = counter + 1
+    print(counter)
+
+print("energy ", energy)
+print("energy_unc ", energy_unc)
+print("mean_rise_time_per_e ", mean_rise_time_per_e)
+print("mean_rise_time_per_e_unc ", mean_rise_time_per_e_unc)
+
+# Create the plot with error bars
+plt.errorbar(energy, mean_rise_time_per_e, xerr=energy_unc, yerr=mean_rise_time_per_e_unc, fmt='o')
+
+# Add axis labels and title
+plt.xlabel('energy')
+plt.ylabel('mean_rise_time_per_e')
+plt.title('Example plot with error bars')
+
+# Display the plot
+plt.show()
